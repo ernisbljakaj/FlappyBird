@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Bird Klon</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #222;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+
+        canvas {
+            border: 4px solid #fff;
+            background-color: #70c5ce;
+            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="board" width="360" height="640"></canvas>
+
+    <script>
+        // Spielfeld (Canvas)
+        let board = document.getElementById("board");
+        let ctx = board.getContext("2d");
+
+        // Vogel-Eigenschaften
+        let birdWidth = 34;
+        let birdHeight = 24;
+        let birdX = board.width / 8;
+        let birdY = board.height / 2;
+        let bird = { x: birdX, y: birdY, width: birdWidth, height: birdHeight };
+
+        // Physik
+        let velocityY = 0; // Sprung-/Fallgeschwindigkeit
+        let gravity = 0.4; // Schwerkraft
+        let lift = -6;     // Sprungstärke
+
+        // Röhren (Pipes)
+        let pipeArray = [];
+        let pipeWidth = 64;
+        let pipeHeight = 512;
+        let pipeX = board.width;
+        let pipeY = 0;
+        let openingSpace = board.height / 4; // Lücke für den Vogel
+
+        let velocityX = -2; // Bewegungsgeschwindigkeit der Röhren
+        let score = 0;
+        let gameOver = false;
+
+        window.onload = function () {
+            requestAnimationFrame(update);
+            setInterval(placePipes, 1500); // Alle 1,5 Sekunden neue Röhren
+            document.addEventListener("keydown", moveBird);
+            document.addEventListener("click", triggerJump);
+        }
+
+        function update() {
+            if (gameOver) return;
+
+            ctx.clearRect(0, 0, board.width, board.height);
+
+            // Schwerkraft anwenden
+            velocityY += gravity;
+            bird.y = Math.max(bird.y + velocityY, 0); // Obergrenze
+
+            // Vogel zeichnen (Gelbes Rechteck)
+            ctx.fillStyle = "#f8e71c";
+            ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
+
+            // Spielende bei Bodenberührung
+            if (bird.y + bird.height >= board.height) {
+                gameOver = true;
+            }
+
+            // Röhren bewegen und zeichnen
+            for (let i = 0; i < pipeArray.length; i++) {
+                let pipe = pipeArray[i];
+                pipe.x += velocityX;
+                ctx.fillStyle = "#73bf2e";
+                ctx.fillRect(pipe.x, pipe.y, pipe.width, pipe.height);
+
+                // Punktzählen & Röhren entfernen
+                if (!pipe.passed && bird.x > pipe.x + pipe.width) {
+                    score += 0.5; // Jedes Paar (oben + unten) gibt 1 Punkt
+                    pipe.passed = true;
+                }
+
+                if (detectCollision(bird, pipe)) {
+                    gameOver = true;
+                }
+            }
+
+            // Alte Röhren aus Array löschen
+            while (pipeArray.length > 0 && pipeArray[0].x < -pipeWidth) {
+                pipeArray.shift();
+            }
+
+            // Punktestand anzeigen
+            ctx.fillStyle = "white";
+            ctx.font = "45px sans-serif";
+            ctx.fillText(score, board.width / 2 - 15, 60);
+
+            if (gameOver) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+                ctx.fillRect(0, 0, board.width, board.height);
+
+                ctx.fillStyle = "white";
+                ctx.font = "35px sans-serif";
+                ctx.fillText("SPIEL VORBEI", 50, board.height / 2 - 20);
+
+                ctx.font = "18px sans-serif";
+                ctx.fillText("Klicken oder Leertaste zum Neustarten", 35, board.height / 2 + 20);
+                return;
+            }
+
+            requestAnimationFrame(update);
+        }
+
+        function placePipes() {
+            if (gameOver) return;
+
+            // Zufällige Röhrenhöhe
+            let randomPipeY = pipeY - Math.random() * (pipeHeight / 2);
+
+            let topPipe = {
+                x: pipeX,
+                y: randomPipeY,
+                width: pipeWidth,
+                height: pipeHeight,
+                passed: false
+            };
+            pipeArray.push(topPipe);
+
+            let bottomPipe = {
+                x: pipeX,
+                y: randomPipeY + pipeHeight + openingSpace,
+                width: pipeWidth,
+                height: pipeHeight,
+                passed: false
+            };
+            pipeArray.push(bottomPipe);
+        }
+
+        function triggerJump() {
+            if (gameOver) {
+                resetGame();
+            } else {
+                velocityY = lift;
+            }
+        }
+
+        function moveBird(e) {
+            if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyX") {
+                triggerJump();
+            }
+        }
+
+        function detectCollision(a, b) {
+            return a.x < b.x + b.width &&
+                a.x + a.width > b.x &&
+                a.y < b.y + b.height &&
+                a.y + a.height > b.y;
+        }
+
+        function resetGame() {
+            bird.y = board.height / 2;
+            velocityY = 0;
+            pipeArray = [];
+            score = 0;
+            gameOver = false;
+            requestAnimationFrame(update);
+        }
+    </script>
+
+</body>
+
+</html>
